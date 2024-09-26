@@ -108,8 +108,6 @@ DjangoOpenAIVRMChat/
 │  ├─scripts
 │  │  ├─DjangoUtils
 │  │  ├─LlmUtils
-│  │  ├─NLPUtils
-│  │  ├─PlotlyUtils
 │  │  └─PythonCodeUtils
 │  └─views
 ├─config
@@ -126,8 +124,9 @@ DjangoOpenAIVRMChat/
 ├─static
 │  ├─apps
 │  │  ├─chat
-│  │  │  └─ai_icon
-│  │  │      └─default
+│  │  │  │─ai_icon
+│  │  │  │   └─default
+│  │  │  └─vrm
 │  │  └─user_profile
 │  │      └─user_icon
 │  │          └─default
