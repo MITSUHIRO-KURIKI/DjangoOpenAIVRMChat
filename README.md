@@ -12,7 +12,7 @@
 ## 設置
 <sup>[DjangoTemplate](https://github.com/MITSUHIRO-KURIKI/DjangoTemplate/ "DjangoTemplate")との差分のみ表示</sup>
 
-#### static > apps > chat > vrm へ3Dモデル(.vrm)を格納します
+#### static > apps > chat > vrm へダウンロードした3Dモデル(.vrm)を格納します
 サンプルイメージに使用したのは[つくよみちゃん公式3Dモデル タイプA　①通常版（VRM）](https://tyc.rei-yumesaki.net/material/avatar/3d-a/ "つくよみちゃん公式3Dモデル タイプA　①通常版（VRM）")です。
 
 
