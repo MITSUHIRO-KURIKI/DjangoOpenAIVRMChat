@@ -1,5 +1,7 @@
 # DjangoOpenAIVRMChat
-<img width="1080px" src="https://github.com/MITSUHIRO-KURIKI/DjangoOpenAIVRMChat/blob/main/static/templates/pages/home/img/img_fps10.gif">
+<img width="1080px" src="https://github.com/MITSUHIRO-KURIKI/DjangoOpenAIVRMChat/blob/main/static/templates/pages/home/img/img_fps10.gif" />  
+
+<sup>上記サンプルイメージでは、[フリー素材キャラクター「つくよみちゃん」](https://tyc.rei-yumesaki.net/ "フリー素材キャラクター「つくよみちゃん」") （© Rei Yumesaki）を使用しています。</sup>  
 
 ## What is this?
 [DjangoOpenAIStreamingChat](https://github.com/MITSUHIRO-KURIKI/DjangoOpenAIStreamingChat/ "DjangoOpenAIStreamingChat")をベースに[OpenAI API](https://openai.com/blog/openai-api "OpenAI API")と音声認識に[Azure Speech Studio](https://azure.microsoft.com/ja-jp/products/ai-services/ai-speech "Azure Speech Studio")を利用したVRMとの会話アプリを学習として作成しました
