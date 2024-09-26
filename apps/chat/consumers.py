@@ -93,7 +93,6 @@ class OpenAIChatConsumer(AsyncWebsocketConsumer):
                 'llm_answer': error_message,
             }
             await self.send(json.dumps(message_data))
-
         ## 何も質問されてないときに返すテキスト△
         
         ## メッセージのトークンが設定値を超えた場合の処理▽
@@ -154,7 +153,7 @@ class OpenAIChatConsumer(AsyncWebsocketConsumer):
         await self.send(json.dumps(message_data))
 
 
-    # 回答の生成を行う非同期関数
+    # 回答の生成
     async def chat_generater(self,
                              user_sentence:str,
                              system_sentence:str     = None,
@@ -207,8 +206,7 @@ class OpenAIChatConsumer(AsyncWebsocketConsumer):
                     'content': assistant_sentence,
                 }
             )
-        
-        # 非同期処理の場合にはclientをUtilでなく定義が必要▽
+
         if settings.IS_USE_AZURE_OPENAI:
             client = openai.AzureOpenAI(
                                 azure_endpoint = settings.AZURE_OPENAI_ENDPOINT,
@@ -218,8 +216,7 @@ class OpenAIChatConsumer(AsyncWebsocketConsumer):
         else:
             client = openai.OpenAI(api_key     = settings.OPENAI_API_KEY,
                                    http_client = None,) # IF USE ProxyServer httpx.Client(proxies=settings.HTTP_PROXY)))
-        # 非同期処理の場合にはclientをUtilでなく定義が必要△
-        
+
         response = client.chat.completions.create(
                             model       = model_name,
                             messages    = messages,
