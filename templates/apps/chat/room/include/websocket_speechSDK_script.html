@@ -1,0 +1,259 @@
+<script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
+<script type="text/javascript">
+    // ------------------------------
+    // Grobal ▽
+    // socket
+    let socket;
+    // SpeechSDK
+    const speechServiceKey          = '{{AZURE_SPEECH_SERVICE_API_KEY}}',
+          speechServiceRegion       = '{{AZURE_SPEECH_SERVICE_REGION}}',
+          speechRecognitionLanguage = '{{AZURE_SPEECH_SERVICE_LANGUAGE}}',
+          recognizedElement         = document.getElementById('recognized'),
+          recognizingElement        = document.getElementById('recognizing'),
+          llmResponseText           = document.getElementById('llmResponseText'),
+          youBudge                  = document.getElementById('youBudge'),
+          llmBudge                  = document.getElementById('llmBudge'),
+          allowedDomainsList        = {{ ALLOWD_DOMAINS_LIST|safe }}; // LLMストリームで表示を許可するURLドメイン
+    let recognizer               = null,
+        startedRecognition       = false,
+        shouldSendOnSpaceRelease = false,
+        recognitionTimeout       = null;
+    // Grobal △
+
+    // WebSocketのURLを生成する関数
+    function createWebSocketUrl() {
+        const wsScheme = window.location.protocol === "https:" ? "wss" : "ws",
+              wsPort   = '';
+        return `${wsScheme}://${window.location.host}${wsPort}/ws/chat/room/{{ object.room_id.room_id }}`;
+    };
+
+    // 任意の offcanvas の状態を管理
+    var isAnyOffcanvasOpen = false;
+    $(document).on('show.bs.offcanvas', '.offcanvas', function(e) {
+        isAnyOffcanvasOpen = true;
+    });
+    $(document).on('hidden.bs.offcanvas', '.offcanvas', function(e) {
+        isAnyOffcanvasOpen = false;
+    });
+    // 任意の modal の状態を管理
+    var isAnyModalOpen = false;
+    $(document).on('show.bs.modal', '.modal', function(e) {
+        isAnyModalOpen = true;
+    });
+    $(document).on('hidden.bs.modal', '.modal', function(e) {
+        isAnyModalOpen = false;
+    });
+
+    // WebSocket接続を確立するための関数
+    function connectWebSocket() {
+
+        const wsUrl = createWebSocketUrl();
+        socket  = new WebSocket(wsUrl);
+
+        socket.addEventListener('open', () => {
+            //
+        });
+        socket.addEventListener('message', (e) => {
+            receiveMessage(e);
+        });
+        socket.addEventListener('close', () => {
+            //
+        });
+        socket.addEventListener('error', (error) => {
+            console.error('WebSocket error:', error);
+        });
+        return socket;
+    };
+
+    // メッセージを送信する
+    function wsSendMessage(message) {
+        if (socket && socket.readyState == WebSocket.OPEN) {
+            // socket send
+            socket.send(JSON.stringify(message));
+        } else if (socket && socket.readyState == WebSocket.CONNECTING) {
+            //
+        } else {
+            //
+        };
+    };
+    
+    // WebSocketからのメッセージを受け取る
+    marked.setOptions({renderer: markedRenderer, breaks: true, gfm: true,});
+    function receiveMessage(event) {
+        try {
+            let data = JSON.parse(event.data);
+
+            // LLM 回答の受信
+            if (data.type === 'llm_answer') {
+
+                recognizedElement.innerText = '';
+                youBudge.classList.add('invisible');
+                llmBudge.classList.remove('invisible');
+                llmResponseText.innerHTML = DOMPurify.sanitize(data.llm_answer);
+
+                // Text2Speech
+                Text2Speech(DOMPurify.sanitize(data.llm_answer));
+            };
+        } catch (e) {
+            console.error('Error parsing message data:', e);
+            document.getElementById(loadingIndicatorId).style.display = 'none';
+        };
+    };
+
+    // WebSocket接続を開始
+    socket = connectWebSocket();
+
+    // ウィンドウが閉じられる際にはWebSocket切断
+    window.addEventListener('beforeunload', () => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.close();
+        };
+    });
+
+    {# --- SpeechSDK (Speech2Text) ▽ --- #}
+    // マイクの権限を自動的に許可する
+    window.onload = function() {
+        const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(speechServiceKey, speechServiceRegion);
+        speechConfig.speechRecognitionLanguage = speechRecognitionLanguage;
+        const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+        recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
+
+        recognizer.recognizing = function(sender, e) {
+            recognizingElement.textContent = '';
+            if (e.result.text) recognizingElement.textContent += e.result.text;
+        };
+
+        recognizer.recognized = function(sender, e) {
+            if (e.result.text) {
+                console.log(e.result)
+                recognizingElement.innerText = '';
+                recognizedElement.innerText  += e.result.text;
+            };
+        };
+
+        // 音声認識セッションが完全に停止したときに呼ばれる
+        recognizer.sessionStopped = function(sender, e) {
+            // スペースキーが離されていた場合のみ、speechTextSend()を呼び出す
+            if (shouldSendOnSpaceRelease) {
+                speechTextSend();                  // 音声認識が停止したらテキスト送信
+                shouldSendOnSpaceRelease = false;  // スペースキー離しているフラグリセット
+            };
+        };
+    };
+
+    // スペースキーを押している間だけ音声認識を開始する
+    document.addEventListener('keydown', function(e) {
+        if (e.code === 'Space' && !startedRecognition) {
+            if (recognitionTimeout) {clearTimeout(recognitionTimeout);};
+            youBudge.classList.remove('invisible');
+            llmBudge.classList.add('invisible');
+            llmResponseText.innerText = '';
+            recognizer.startContinuousRecognitionAsync();
+            startedRecognition = true;
+        };
+    });
+    document.addEventListener('keyup', function(e) {
+        if (e.code === 'Space' && startedRecognition) {
+            shouldSendOnSpaceRelease = true;
+            recognitionTimeout = setTimeout(function() {
+                recognizer.stopContinuousRecognitionAsync();
+                startedRecognition = false;
+            }, 400); // 0.4秒後に停止実行
+        };
+    });
+
+    function speechTextSend() {
+        const text = recognizedElement.innerText;
+        if (text && text != '') {
+            // メッセージ送信
+            const message = {
+                user_sentence: DOMPurify.sanitize(text),
+            };
+            wsSendMessage(message);
+        };
+    };
+    {# --- SpeechSDK (Speech2Text) △ --- #}
+    {# --- SpeechSDK (Text2Speech) ▽ --- #}
+    function Text2Speech(inputText) {
+        // audioContext
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)(),
+              analyser     = audioContext.createAnalyser();
+        analyser.fftSize   = 2048;
+        const dataArray    = new Uint8Array(analyser.frequencyBinCount);
+
+        // SpeechSDK
+        const speechConfig = SpeechSDK.SpeechConfig.fromSubscription(speechServiceKey, speechServiceRegion);
+        speechConfig.speechSynthesisVoiceName = 'ja-JP-AoiNeural';
+        // 合成音声を取得
+        // AudioContextで再生するので自動再生しないように AudioConfig に null をセット
+        // https://learn.microsoft.com/ja-jp/azure/ai-services/speech-service/how-to-speech-synthesis?tabs=browserjs%2Cterminal&pivots=programming-language-javascript
+        const synthesizer = new SpeechSDK.SpeechSynthesizer(speechConfig, null);
+    
+        synthesizer.speakTextAsync(
+            inputText,
+            function (result) {
+                if (result.reason === SpeechSDK.ResultReason.SynthesizingAudioCompleted) {
+                    window.console.log("音声合成完了");
+
+                    // 音声データをArrayBufferに変換してAudioContextで再生
+                    let audioData = result.audioData;
+                    audioContext.decodeAudioData(audioData, (buffer) => {
+                        const source  = audioContext.createBufferSource();
+                        source.buffer = buffer;
+                        // AudioContextにanalyserを接続してリップシンク用に解析
+                        source.connect(analyser);
+                        analyser.connect(audioContext.destination);
+                        // リップシンクを開始
+                        startLipSync(analyser, dataArray);
+                        // 音声再生
+                        source.start(0);
+                    }, (error) => {
+                        console.error('デコード失敗', error);
+                    });
+                } else {
+                    window.console.log("音声合成失敗 Reason: " + result.errorDetails);
+                }
+                synthesizer.close();
+            },
+            function (err) {
+                window.console.log("エラー: " + err);
+                synthesizer.close();
+            }
+        );
+    }
+    // startLipSync
+    function startLipSync(analyser, dataArray) {
+        function updateLipSync() {
+            analyser.getByteFrequencyData(dataArray);
+            // 音量を解析してVRMのリップシンクを制御
+            // Ref. https://qiita.com/daifukusan/items/de74f272e71dd87f853c
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i];
+            };
+            const average = sum / dataArray.length,
+                  volume  = Math.floor(average);
+            if (currentVrm && currentVrm.expressionManager) {
+                const aa = Math.pow(Math.min(80, volume), 2) / 3200.0,
+                      oh = Math.pow(Math.max(40.0 - Math.abs(volume - 40.0), 0), 2) / 1600.0,
+                      ih = Math.pow(Math.max(20.0 - Math.abs(volume - 20.0), 0), 2) / 400.0,
+                      happy = (aa + oh + ih) / 6.0;
+                // 音量に応じて表情を設定
+                if (volume < 10) {
+                    currentVrm.expressionManager.setValue('aa', 0.0);
+                    currentVrm.expressionManager.setValue('oh', 0.0);
+                    currentVrm.expressionManager.setValue('ih', 0.0);
+                } else {
+                    currentVrm.expressionManager.setValue('happy', happy);
+                    currentVrm.expressionManager.setValue('aa', aa * (2/3));
+                    currentVrm.expressionManager.setValue('oh', oh * (2/3));
+                    currentVrm.expressionManager.setValue('ih', ih * (2/3));
+                };
+                currentVrm.expressionManager.update();
+            };
+            requestAnimationFrame(updateLipSync); // 次のフレームで再び実行
+        };
+        requestAnimationFrame(updateLipSync);
+    };
+    {# --- SpeechSDK (Text2Speech) △ --- #}
+</script>

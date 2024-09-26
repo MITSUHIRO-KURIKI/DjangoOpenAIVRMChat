@@ -1,0 +1,53 @@
+<div class="sticky-top chat-header print-hide-area px-2 pb-1">
+    <form method="post" id='SubmitWithFocusOff'>
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        <div class="d-flex flex-row">
+            <div class="flex-column flex-grow-1">
+                <div class="input-group submit-button-hide-show">
+                    <input type="{{ form.room_name.field.widget.input_type }}"
+                           class="f-room-title form-control input-border-none input-bottom-animation {% if form.room_name.errors %}is-invalid{% endif %}"
+                           name="{{ form.room_name.html_name }}"
+                           id="{{ form.room_name.id_for_label }}"
+                           value="{{ form.room_name.value }}"
+                           placeholder="{{ form.room_name.label }}"
+                           {% if form.room_name.field.required %}required{% endif %} />
+                    <span class="border-bottom-animation left"></span>
+                </div>
+                {% if form.room_name.errors %}
+                    {% for error in form.room_name.errors %}
+                        <div class="invalid-feedback {% if form.room_name.errors %}d-block{% endif %}">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            <div class="flex-column flex-shrink-1">
+                {# --- room設定(offcanvas buton) --- #}
+                <button class="btn btn-outline-highlight rounded"
+                        type="button"
+                        data-bs-toggle="offcanvas"
+                        data-bs-target="#RoomSettingsOffcanvasWithEndOptions"
+                        aria-controls="RoomSettingsOffcanvasWithEndOptions">
+                    <i class="fa-solid fa-sliders"></i>
+                </button>
+                {# --- room一覧(offcanvas buton) --- #}
+                <button class="btn btn-outline-highlight rounded"
+                        type="button"
+                        data-bs-toggle="offcanvas"
+                        data-bs-target="#RoomListOffcanvasWithEndOptions"
+                        aria-controls="RoomListOffcanvasWithEndOptions">
+                    <i class="fa-solid fa-list"></i>
+                </button>
+                <a role="button"
+                   class="btn btn-sm btn-outline-secondary fs-8 mx-1"
+                   href="{% url 'chat:room_list' %}">
+                    <i class="fa-solid fa-door-open"></i><span class="d-none d-lg-inline ps-2">Exit</span> {# --- Displayed lg or above ---#}
+                </a>
+            </div>
+        </div>
+    </form>
+    {# --- submit_with_focusOff --- #}
+    {% with FormIdOrClass='#SubmitWithFocusOff' MonitoringInputID=form.room_name.id_for_label %}
+        {% include 'common/asset/submit_with_focusOff/submit_with_focusOff.html' %}
+    {% endwith %}
+</div>

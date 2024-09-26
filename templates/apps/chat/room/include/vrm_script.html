@@ -1,0 +1,221 @@
+{% load static %}
+
+<script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/",
+        "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3/lib/three-vrm.module.min.js"
+      }
+    }
+  </script>
+<script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+
+    // フレームレートを制限
+    const fps      = 10,
+          interval = 1000 / fps;
+    // renderer
+    const renderer        = new THREE.WebGLRenderer({ alpha: true, antialias: false }),  // 背景を透明に設定,アンチエイリアス無効化
+          CharacterCanvas = document.getElementById('CharacterCanvas');
+    renderer.setSize(500, 600);
+    renderer.setPixelRatio(window.devicePixelRatio * (2.5 / 4));
+    CharacterCanvas.appendChild(renderer.domElement);
+
+    // camera
+    const camera = new THREE.PerspectiveCamera(7.0, 500/600, 0.1, 10.0);  // （画角, アスペクト比, ニアークリップ, ファークリップ）
+    camera.position.set(0.0, 1.2, 3);  // (x,y,z)
+
+    // scene
+    const scene      = new THREE.Scene();
+    scene.background = null;  // 背景を透明に設定
+
+    // light
+    //const light = new THREE.DirectionalLight(0xffffff, 3);
+    const light = new THREE.AmbientLight(0xffffff, 2.8);  // 環境光に変更し、全体的な負荷を減らす
+    //light.position.set(1.0, 1.0, 1.0).normalize();
+    light.castShadow = false; // 影の計算を無効化
+    scene.add(light);
+
+    // gltf and vrm
+    window.currentVrm  = undefined;
+    const loader       = new GLTFLoader();
+    loader.crossOrigin = 'anonymous';
+
+    loader.register((parser) => {
+        return new VRMLoaderPlugin(parser);
+    });
+
+    loader.load(
+        // URL of the VRM you want to load
+        '{% static "apps/chat/vrm/model.vrm" %}',
+        // called when the resource is loaded
+        (gltf) => {
+            const vrm = gltf.userData.vrm;
+            // パフォーマンス向上のため不要な頂点やジョイントを削除
+            VRMUtils.removeUnnecessaryVertices(gltf.scene);
+            VRMUtils.removeUnnecessaryJoints(gltf.scene);
+            // Disable frustum culling
+            vrm.scene.traverse((obj) => {
+                obj.frustumCulled = true;
+            });
+            currentVrm = vrm;
+            scene.add(vrm.scene);
+
+            // A字スタイルに変更
+            vrm.humanoid.getNormalizedBoneNode('leftUpperArm').rotation.z  = 1.5;
+            vrm.humanoid.getNormalizedBoneNode('rightUpperArm').rotation.z = -1.5;
+            vrm.humanoid.update();
+            // 表情を少し変更
+            vrm.expressionManager.setValue('relaxed', 0.2);
+            vrm.expressionManager.update();
+
+            // モデルをY軸回りに180度回転させて正面を向かせる
+            vrm.scene.rotation.y = Math.PI;
+
+            // 瞬き/呼吸/左右動きアニメーションを開始
+            startBlinking(vrm);
+            startBreathing(vrm);
+            startSwaying(vrm);
+            startRandomEyeMovementWithDice(vrm);
+
+            // DEBUG
+            console.log(vrm);
+            // expressionManagerの確認
+            if (vrm.expressionManager) {
+                // すべての表情をコンソールに出力
+                const expressionMap = vrm.expressionManager._expressionMap;
+                console.log('Expression Manager - All Expressions:');
+                for (const [key, expression] of Object.entries(expressionMap)) {
+                    console.log(`Expression Key: ${key}, Expression:`, expression);
+                }
+            } else {
+                console.log('ExpressionManager is undefined.');
+            };
+        },
+        // called while loading is progressing
+        (progress) => console.log('Loading VRM model...', 100.0 * (progress.loaded / progress.total), '%'),
+        // called when loading has errors
+        (error) => console.error(error)
+    );
+
+    // 瞬きアニメーション
+    let blingSetTimeOut;
+    function startBlinking(vrm) {
+        const blinkDuration = 100;  // 瞬きを閉じるまでの時間(ms)
+        const blinkInterval = 3000; // 次の瞬きまでの間隔(ms)
+        function blink() {
+            // サイコロを振って7/10の確率で瞬きする
+            const diceRoll = Math.random(); // 0から1までのランダムな数を生成
+            if (diceRoll < 0.5) { // 7/10の確率で瞬きをする
+                if (blingSetTimeOut) {clearTimeout(blingSetTimeOut);};
+                // 目を閉じる
+                vrm.expressionManager.setValue('blink', 1.0);
+                // 一定時間後に目を開ける
+                setTimeout(() => {
+                    vrm.expressionManager.setValue('blink', 0.0);
+                }, blinkDuration);
+            };
+            const nextBlinkInterval = blinkInterval + Math.random() * 1500; // 3000msから4000msの間でランダム
+            blingSetTimeOut = setTimeout(blink, nextBlinkInterval); // 次の瞬きのタイミングを再設定
+        };
+        blingSetTimeOut = setTimeout(blink, blinkInterval); // 次の瞬きのタイミングを再設定
+    };
+
+    // 呼吸アニメーション
+    function startBreathing(vrm) {
+        const breathDuration = 500;  // 口を閉じるまでの時間(ms)
+        const breathInterval = 10033; // 次の呼吸までの間隔(ms)
+        function breath() {
+            // 口を開ける
+            vrm.expressionManager.setValue('ee', 0.05);
+            // 一定時間後に口を閉じる
+            setTimeout(() => {
+                vrm.expressionManager.setValue('ee', 0.0);
+            }, breathDuration);
+        };
+        // 一定時間ごとに繰り返す
+        setInterval(breath, breathInterval);
+    };
+
+    // 左右動きアニメーション
+    function startSwaying(vrm) {
+        let swaySpeed   = 0.01,    // 揺れの速さ（数値を調整して速さを変更）
+            maxRotation = 0.00015, // 最大回転角度（ラジアン）
+            swayTime    = 0;       // 時間の経過を追跡する変数
+        function sway() {
+            // サイン波を使って滑らかに揺らす
+            const rotationZ = maxRotation * Math.sin(swayTime);
+            vrm.scene.rotation.z = rotationZ;
+            // 時間を進める
+            swayTime += swaySpeed;
+            // リクエストアニメーションフレームで次のフレームを実行
+            requestAnimationFrame(sway);
+        };
+        // 初回の呼び出し
+        sway();
+    };
+
+    function lookRandomly(vrm) {
+        // 右目と左目のボーンを取得
+        const leftEye  = vrm.humanoid.getNormalizedBoneNode('leftEye'),
+              rightEye = vrm.humanoid.getNormalizedBoneNode('rightEye');
+        // 目をランダムに動かす角度（-0.05から0.05の範囲でランダムに設定）
+        const eyeRotationAngle = (Math.random() - 0.5) * 0.1;
+        // 左右の目を同じ角度で回転させる
+        leftEye.rotation.y  = eyeRotationAngle;
+        rightEye.rotation.y = eyeRotationAngle;
+        // ボーンの更新を反映
+        vrm.humanoid.update();
+        // 0.3秒後に目を元に戻す
+        setTimeout(() => {
+            resetEyes(vrm); // 目を正面に戻す関数を呼び出し
+        }, 380); // 300ms（0.3秒）後に実行
+    };
+    function resetEyes(vrm) {
+        const leftEye = vrm.humanoid.getNormalizedBoneNode('leftEye'),
+              rightEye = vrm.humanoid.getNormalizedBoneNode('rightEye');
+        // 目を正面に戻すために回転をリセット
+        leftEye.rotation.y  = 0;
+        rightEye.rotation.y = 0;
+        // ボーンの更新を反映
+        vrm.humanoid.update();
+    };
+    // 一定時間ごとにサイコロを振って目を動かすか決定する関数
+    function startRandomEyeMovementWithDice(vrm) {
+        function rollDiceAndMoveEyes(vrm) {
+            const diceRoll = Math.random(); // 0から1までのランダムな数を生成
+            if (diceRoll < 0.1) { // 1/10の確率で目を動かす
+                lookRandomly(vrm);
+            };
+        };
+        // 10秒に1回サイコロを振る
+        function rollDice() {
+            rollDiceAndMoveEyes(vrm);
+            // 次のサイコロを振るタイミングを10秒後に設定
+            setTimeout(rollDice, 10000); // 10秒ごとに実行
+        };
+        rollDice(); // 初回呼び出し
+    };
+
+    // animate
+    const clock = new THREE.Clock();
+    clock.start();
+    let lastFrameTime = 0;
+
+    function animate(time) {
+        requestAnimationFrame(animate);
+        // フレームレートを制限
+        if (time - lastFrameTime < interval) return;
+        lastFrameTime = time;
+        // update vrm components
+        if (currentVrm) {
+            currentVrm.update(clock.getDelta());
+        };
+        // render
+        renderer.render(scene, camera);
+    }
+    animate();
+</script>

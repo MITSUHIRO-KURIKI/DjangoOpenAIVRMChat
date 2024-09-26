@@ -1,0 +1,86 @@
+{% comment %} 
+template引数:
+ * IdCyDisplayArea
+ * IdCyLayoutStyle
+ * IdCyEdgeStyle
+ * IdCyNavigationSwitch
+ * IdExpandCollapseOpen
+ * IdExpandCollapseClose
+ * IdCySearchBox
+{% endcomment %}
+<div class="d-flex flex-wrap align-content-center align-items-center pt-3">
+    <div class="d-flex justify-content-start align-content-center align-items-center">
+        <label class="form-label fs-7 my-0 ms-3 me-0 p-0"
+               for="{{ IdCyLayoutStyle }}">
+            Layout:
+        </label>
+        <select class="form-select form-select-sm"
+                id="{{ IdCyLayoutStyle }}">
+            <option value="grid" selected>grid</option>
+            <option value="fcose">fcose</option>
+            <option value="cola">cola</option>
+            <option value="euler">euler</option>
+            <option value="circle">circle</option>
+            <option value="avsdf">avsdf</option>
+            <option value="concentric">concentric</option>
+            <option value="dagre">dagre</option>
+            <option value="klay">klay</option>
+            <option value="breadthfirst">breadthfirst</option>
+            <option value="cose">cose</option>
+            <option value="cytoscape-ngraph.forcelayout">forcelayout</option>
+            <option value="random">random</option>
+        </select>
+
+        <label class="form-label fs-7 my-0 ms-3 me-0 p-0"
+               for="{{ IdCyEdgeStyle }}">
+            RdgeStyle:
+        </label>
+        <select class="form-select form-select-sm"
+                id="{{ IdCyEdgeStyle }}">
+            <option value="unbundled-bezier" selected>unbundled-bezier</option>
+            <option value="bezier">bezier</option>
+            <option value="haystack">haystack</option>
+            <option value="straight">straight</option>
+            <option value="straight-triangle">straight-triangle</option>
+            <option value="segments">segments</option>
+            <option value="taxi">taxi</option>
+        </select>
+    </div>
+    {% if IS_USE_EXPAND_COLLAPSE %}
+    <div class="my-0 ms-3 me-0 p-0">
+        <div class="form-check form-switch form-check-reverse m-0">
+            <input type="checkbox"
+                   class="form-check-input"
+                   role="switch"
+                   id="{{ IdExpandCollapseSwitch }}"
+                   value='false'/>
+            <label class="form-check-label fs-8"
+                   for="{{ IdExpandCollapseSwitch }}">
+                Grouping:
+            </label>
+        </div>
+    </div>
+    {% endif %}
+    {% if IS_USE_BIRDs_NAVIGATION %}
+    <div class="my-0 ms-3 me-0 p-0">
+        <div class="form-check form-switch form-check-reverse m-0">
+            <input type="checkbox"
+                   class="form-check-input"
+                   role="switch"
+                   id="{{ IdCyBirdsNavigationSwitch }}"
+                   value='false'/>
+            <label class="form-check-label fs-8"
+                   for="{{ IdCyBirdsNavigationSwitch }}">
+                鳥瞰図の表示
+            </label>
+        </div>
+    </div>
+    {% endif %}
+    <div class="d-flex flex-fill px-3">
+        <div class="search-input-form w-100">
+            <input type="text" class="" id="{{ IdCySearchBox }}" placeholder="ノードを検索" />
+        </div>
+    </div>
+</div>
+<hr />
+<div id="{{ IdCyDisplayArea }}"></div>
