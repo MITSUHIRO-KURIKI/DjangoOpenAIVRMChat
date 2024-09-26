@@ -2,7 +2,7 @@
 <img width="1080px" src="https://github.com/MITSUHIRO-KURIKI/DjangoOpenAIVRMChat/blob/main/static/templates/pages/home/img/img_fps10.gif">
 
 ## What is this?
-[DjangoOpenAIStreamingChat](https://github.com/MITSUHIRO-KURIKI/DjangoOpenAIStreamingChat/ "DjangoOpenAIStreamingChat")をベースに[OpenAI API](https://openai.com/blog/openai-api "OpenAI API")と音声認識に[Azure Speech Studio](https://openai.com/blog/openai-api "Azure Speech Studio")を利用したVRMとの会話アプリを学習として作成しました
+[DjangoOpenAIStreamingChat](https://github.com/MITSUHIRO-KURIKI/DjangoOpenAIStreamingChat/ "DjangoOpenAIStreamingChat")をベースに[OpenAI API](https://openai.com/blog/openai-api "OpenAI API")と音声認識に[Azure Speech Studio](https://azure.microsoft.com/ja-jp/products/ai-services/ai-speech "Azure Speech Studio")を利用したVRMとの会話アプリを学習として作成しました
 > [!WARNING]  
 > <sup>* 本コードはベータ版で完全ではありません。</sup>  
 > <sup>* AZURE_SPEECH_SERVICE_API キーを現在直接Templateへ渡しており、本番環境ではサーバサイドからの呼び出しが必要です。(調査中)</sup>  
